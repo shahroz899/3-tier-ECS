@@ -44,9 +44,14 @@ pipeline {
                         def backupTag = "backup-${timestamp}"
 
                         sh """
-                        aws ecr batch-delete-image --repository-name techthree-repo --region $AWS_REGION --image-ids imageDigest=${imageDigest} || true
-                        aws ecr put-image --repository-name techthree-repo --region $AWS_REGION --image-tag ${backupTag} --image-manifest "$(aws ecr batch-get-image --repository-name techthree-repo --region $AWS_REGION --image-ids imageDigest=${imageDigest} --query 'images[].imageManifest' --output text)"
+                        # Fetch the image manifest and save to a file
+                        aws ecr batch-get-image --repository-name techthree-repo --region $AWS_REGION --image-ids imageDigest=${imageDigest} --query 'images[].imageManifest' --output text > image-manifest.json
+                        
+                        # Push the same image under a backup tag
+                        aws ecr put-image --repository-name techthree-repo --region $AWS_REGION --image-tag ${backupTag} --image-manifest file://image-manifest.json
                         """
+                    } else {
+                        echo "No existing 'latest' image found, skipping backup."
                     }
                 }
             }
