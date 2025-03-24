@@ -29,7 +29,7 @@ pipeline {
         stage('Build & Push Frontend') {
             steps {
                 sh '''
-                docker build --build-arg REACT_APP_PUBLIC_URL=${BACKEND_URL} -t ${FRONTEND_IMAGE}:latest .
+                docker build -f Frontend/Dockerfile --build-arg REACT_APP_PUBLIC_URL=${BACKEND_URL} -t ${FRONTEND_IMAGE}:latest Frontend/
                 docker push ${FRONTEND_IMAGE}:latest
                 '''
             }
