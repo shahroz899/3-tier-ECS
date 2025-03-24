@@ -19,7 +19,7 @@ pipeline {
             steps {
                 script {
                     env.BACKEND_URL = sh(
-                        script: "aws ssm get-parameter --name /ecs/frontend/config --query Parameter.Value --output text",
+                        script: "aws ssm get-parameter --name /ecs/frontend/config --query Parameter.Value --output text" --region $AWS_REGION,
                         returnStdout: true
                     ).trim()
                 }
