@@ -69,7 +69,7 @@ pipeline {
         stage('Deploy to ECS') {
             steps {
                 sh '''
-                aws ecs update-service --region us-east-1 --cluster Techthree-cluster --service frontend-service --force-new-deployment
+                aws ecs update-service --region us-east-1 --cluster Techthree-cluster --service frontend-Service --force-new-deployment
                 '''
             }
         }
