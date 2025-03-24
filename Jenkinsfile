@@ -31,7 +31,7 @@ pipeline {
             steps {
                 script {
                     def imageDigest = sh(
-                        script: "aws ecr list-images --repository-name techthree-repo --region $AWS_REGION --query 'imageIds[?imageTag==\`latest\`].imageDigest' --output text",
+                        script: "aws ecr list-images --repository-name techthree-repo --region $AWS_REGION --query \"imageIds[?imageTag=='latest'].imageDigest\" --output text",
                         returnStdout: true
                     ).trim()
 
