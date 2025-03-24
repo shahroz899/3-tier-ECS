@@ -3,7 +3,7 @@ pipeline {
     environment {
         AWS_REGION = "us-east-1"
         AWS_ACCOUNT_ID = "058264111898"
-        FRONTEND_IMAGE = "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/techthree-repo/frontend"
+        FRONTEND_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/techthree-repo/frontend"
     }
 
     stages {
@@ -29,8 +29,8 @@ pipeline {
         stage('Build & Push Frontend') {
             steps {
                 sh '''
-                docker build --build-arg REACT_APP_PUBLIC_URL=${BACKEND_URL} -t $FRONTEND_IMAGE:latest .
-                docker push $FRONTEND_IMAGE:latest
+                docker build --build-arg REACT_APP_PUBLIC_URL=${BACKEND_URL} -t ${FRONTEND_IMAGE}:latest .
+                docker push ${FRONTEND_IMAGE}:latest
                 '''
             }
         }
@@ -44,4 +44,3 @@ pipeline {
         }
     }
 }
-
