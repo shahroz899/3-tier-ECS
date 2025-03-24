@@ -4,7 +4,7 @@ pipeline {
         AWS_REGION = "us-east-1"
         AWS_ACCOUNT_ID = "058264111898"
         ECR_REPO = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/techthree-repo"
-        FRONTEND_IMAGE = "${ECR_REPO}/frontend"
+        FRONTEND_IMAGE = "${ECR_REPO}"
     }
 
     stages {
