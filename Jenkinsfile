@@ -3,7 +3,8 @@ pipeline {
     environment {
         AWS_REGION = "us-east-1"
         AWS_ACCOUNT_ID = "058264111898"
-        FRONTEND_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/techthree-repo/frontend"
+        ECR_REPO = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/techthree-repo"
+        FRONTEND_IMAGE = "${ECR_REPO}/frontend"
     }
 
     stages {
@@ -22,6 +23,31 @@ pipeline {
                         script: "aws ssm get-parameter --name /ecs/frontend/config --query Parameter.Value --output text --region ${AWS_REGION}",
                         returnStdout: true
                     ).trim()
+                }
+            }
+        }
+
+        stage('Backup Existing Image') {
+            steps {
+                script {
+                    def imageDigest = sh(
+                        script: "aws ecr list-images --repository-name techthree-repo --region $AWS_REGION --query 'imageIds[?imageTag==`latest`].imageDigest' --output text",
+                        returnStdout: true
+                    ).trim()
+
+                    if (imageDigest) {
+                        def timestamp = sh(
+                            script: "date +%Y%m%d%H%M%S",
+                            returnStdout: true
+                        ).trim()
+
+                        def backupTag = "backup-${timestamp}"
+
+                        sh """
+                        aws ecr batch-delete-image --repository-name techthree-repo --region $AWS_REGION --image-ids imageDigest=${imageDigest} || true
+                        aws ecr put-image --repository-name techthree-repo --region $AWS_REGION --image-tag ${backupTag} --image-manifest "$(aws ecr batch-get-image --repository-name techthree-repo --region $AWS_REGION --image-ids imageDigest=${imageDigest} --query 'images[].imageManifest' --output text)"
+                        """
+                    }
                 }
             }
         }
