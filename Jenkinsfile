@@ -1,76 +1,73 @@
 pipeline {
     agent any
+
     environment {
-        AWS_REGION = "us-east-1"
-        AWS_ACCOUNT_ID = "058264111898"
-        ECR_REPO = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/techthree-repo"
-        FRONTEND_IMAGE = "${ECR_REPO}"
+        AWS_REGION = 'us-east-1'
+        ECS_CLUSTER = 'Techthree-cluster'
+        ECS_SERVICE = 'frontend-Service'
+        TASK_DEFINITION_FILE = 'frontend/ecs-task-definition.json'
+        ECR_REPO = '058264111898.dkr.ecr.us-east-1.amazonaws.com/techthree-repo'
+        IMAGE_TAG = "frontend-${env.BUILD_NUMBER}"  // Unique tag per build
     }
 
     stages {
-        stage('Login to AWS ECR') {
+        stage('Checkout Code') {
             steps {
-                sh '''
-                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-                '''
+                git branch: 'main', url: 'git@github.com:your-repo/your-project.git'
             }
         }
 
-        stage('Fetch Env Variables') {
+        stage('Login to ECR') {
+            steps {
+                sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}"
+            }
+        }
+
+        stage('Build & Push Image') {
             steps {
                 script {
-                    env.BACKEND_URL = sh(
-                        script: "aws ssm get-parameter --name /ecs/frontend/config --query Parameter.Value --output text --region ${AWS_REGION}",
-                        returnStdout: true
-                    ).trim()
+                    sh """
+                        docker build -t ${ECR_REPO}:${IMAGE_TAG} frontend/
+                        docker push ${ECR_REPO}:${IMAGE_TAG}
+                    """
                 }
             }
         }
 
-        stage('Backup Existing Image') {
+        stage('Register Task Definition') {
             steps {
                 script {
-                    def imageDigest = sh(
-                        script: "aws ecr list-images --repository-name techthree-repo --region $AWS_REGION --query \"imageIds[?imageTag=='latest'].imageDigest\" --output text",
+                    def taskDef = readFile(TASK_DEFINITION_FILE)
+                    taskDef = taskDef.replaceAll('<IMAGE_PLACEHOLDER>', "${ECR_REPO}:${IMAGE_TAG}")
+                    writeFile(file: 'frontend/task-def-updated.json', text: taskDef)
+
+                    def registerTaskOutput = sh(
+                        script: "aws ecs register-task-definition --cli-input-json file://frontend/task-def-updated.json --region ${AWS_REGION}",
                         returnStdout: true
                     ).trim()
 
-                    if (imageDigest) {
-                        def timestamp = sh(
-                            script: "date +%Y%m%d%H%M%S",
-                            returnStdout: true
-                        ).trim()
+                    def taskArn = registerTaskOutput.find(/"taskDefinitionArn":\s*"([^"]+)"/)  
+                    def taskDefName = taskArn?.split(':')[-2]  
+                    def taskDefRevision = taskArn?.split(':')[-1]
 
-                        def backupTag = "backup-${timestamp}"
-
-                        sh """
-                        # Fetch the image manifest and save to a file
-                        aws ecr batch-get-image --repository-name techthree-repo --region $AWS_REGION --image-ids imageDigest=${imageDigest} --query 'images[].imageManifest' --output text > image-manifest.json
-                        
-                        # Push the same image under a backup tag
-                        aws ecr put-image --repository-name techthree-repo --region $AWS_REGION --image-tag ${backupTag} --image-manifest file://image-manifest.json
-                        """
-                    } else {
-                        echo "No existing 'latest' image found, skipping backup."
+                    if (!taskDefName || !taskDefRevision) {
+                        error("Failed to extract task definition details.")
                     }
+
+                    env.TASK_DEFINITION = "${taskDefName}:${taskDefRevision}"
                 }
             }
         }
 
-        stage('Build & Push Frontend') {
+        stage('Update ECS Service') {
             steps {
-                sh '''
-                docker build -f Frontend/Dockerfile --build-arg REACT_APP_PUBLIC_URL=${BACKEND_URL} -t ${FRONTEND_IMAGE}:latest Frontend/
-                docker push ${FRONTEND_IMAGE}:latest
-                '''
+                sh "aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --task-definition ${TASK_DEFINITION} --region ${AWS_REGION}"
             }
         }
 
-        stage('Deploy to ECS') {
+        stage('Enable Execute Command') {
             steps {
-                sh '''
-                aws ecs update-service --region us-east-1 --cluster Techthree-cluster --service frontend-Service --force-new-deployment
-                '''
+                sh "aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --enable-execute-command --region ${AWS_REGION}"
             }
         }
     }
