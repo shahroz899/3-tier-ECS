@@ -31,7 +31,7 @@ pipeline {
             steps {
                 script {
                     def imageDigest = sh(
-                        script: "aws ecr list-images --repository-name techthree-repo --region $AWS_REGION --query 'imageIds[?imageTag==`latest`].imageDigest' --output text",
+                        script: "aws ecr list-images --repository-name techthree-repo --region $AWS_REGION --query 'imageIds[?imageTag==\`latest\`].imageDigest' --output text",
                         returnStdout: true
                     ).trim()
 
@@ -69,7 +69,7 @@ pipeline {
         stage('Deploy to ECS') {
             steps {
                 sh '''
-                sh "aws ecs update-service --region us-east-1 --cluster Techthree-cluster --service frontend-service --force-new-deployment"
+                aws ecs update-service --region us-east-1 --cluster Techthree-cluster --service frontend-service --force-new-deployment
                 '''
             }
         }
