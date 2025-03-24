@@ -1,0 +1,36 @@
+{
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:058264111898:task-definition/frontend-task:1",
+    "family": "frontend-task",
+    "taskRoleArn": "arn:aws:iam::058264111898:role/ecsTaskExecutionRole",
+    "executionRoleArn": "arn:aws:iam::058264111898:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "512",
+    "memory": "1024",
+    "containerDefinitions": [
+        {
+            "name": "frontend-task",
+            "image": "058264111898.dkr.ecr.us-east-1.amazonaws.com/techthree-repo:frontend-latest",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "name": "frontend-port",
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp",
+                    "appProtocol": "http"
+                }
+            ],
+            "essential": true,
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/frontend-task",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ]
+}
+
