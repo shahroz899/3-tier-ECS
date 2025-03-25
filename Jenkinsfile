@@ -32,8 +32,8 @@ pipeline {
                     sh """
                         docker build -t ${ECR_REPO}:frontend-latest .
                         docker tag ${ECR_REPO}:frontend-latest ${ECR_REPO}:${IMAGE_TAG}
-                        docker push ${ECR_REPO}:frontend-latest
-                        docker push ${ECR_REPO}:${IMAGE_TAG}
+                        sudo docker push ${ECR_REPO}:frontend-latest
+                        sudo docker push ${ECR_REPO}:${IMAGE_TAG}
                     """
                 }
             }
