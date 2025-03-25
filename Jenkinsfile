@@ -6,7 +6,7 @@ pipeline {
         ECS_CLUSTER = 'Techthree-cluster'
         ECS_SERVICE = 'frontend-Service'
         TASK_DEFINITION_FILE = 'ecs-task-definition.json'
-        ECR_REPO = '058264111898.dkr.ecr.us-east-1.amazonaws.com/techthree-repo'
+        ECR_REPO = '134819843120.dkr.ecr.us-east-1.amazonaws.com/techthree-repo'
         IMAGE_TAG = "frontend-${env.BUILD_NUMBER}"
         FRONTEND_DIR = 'Frontend' // Corrected case to match your repository
     }
