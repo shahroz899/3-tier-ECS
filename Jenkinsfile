@@ -13,7 +13,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'git@github.com:your-repo/your-project.git'
+                git branch: 'main', url: 'https://github.com/your-repo/your-project.git'
             }
         }
 
@@ -25,12 +25,10 @@ pipeline {
 
         stage('Build & Push Image') {
             steps {
-                script {
-                    sh """
-                        docker build -t ${ECR_REPO}:${IMAGE_TAG} frontend/
-                        docker push ${ECR_REPO}:${IMAGE_TAG}
-                    """
-                }
+                sh """
+                    docker build -t ${ECR_REPO}:latest frontend/
+                    docker push ${ECR_REPO}:latest
+                """
             }
         }
 
@@ -38,30 +36,17 @@ pipeline {
             steps {
                 script {
                     def taskDef = readFile(TASK_DEFINITION_FILE)
-                    taskDef = taskDef.replaceAll('<IMAGE_PLACEHOLDER>', "${ECR_REPO}:${IMAGE_TAG}")
+                    taskDef = taskDef.replaceAll('<IMAGE_PLACEHOLDER>', "${ECR_REPO}:latest")
                     writeFile(file: 'frontend/task-def-updated.json', text: taskDef)
 
-                    def registerTaskOutput = sh(
-                        script: "aws ecs register-task-definition --cli-input-json file://frontend/task-def-updated.json --region ${AWS_REGION}",
-                        returnStdout: true
-                    ).trim()
-
-                    def taskArn = registerTaskOutput.find(/"taskDefinitionArn":\s*"([^"]+)"/)  
-                    def taskDefName = taskArn?.split(':')[-2]  
-                    def taskDefRevision = taskArn?.split(':')[-1]
-
-                    if (!taskDefName || !taskDefRevision) {
-                        error("Failed to extract task definition details.")
-                    }
-
-                    env.TASK_DEFINITION = "${taskDefName}:${taskDefRevision}"
+                    sh "aws ecs register-task-definition --cli-input-json file://frontend/task-def-updated.json --region ${AWS_REGION}"
                 }
             }
         }
 
         stage('Update ECS Service') {
             steps {
-                sh "aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --task-definition ${TASK_DEFINITION} --region ${AWS_REGION}"
+                sh "aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --force-new-deployment --region ${AWS_REGION}"
             }
         }
 
