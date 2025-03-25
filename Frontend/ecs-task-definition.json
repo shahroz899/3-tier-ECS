@@ -8,7 +8,7 @@
     "memory": "1024",
     "containerDefinitions": [
         {
-            "name": "frontend-task",
+            "name": "frontend",
             "image": "134819843120.dkr.ecr.us-east-1.amazonaws.com/techthree-repo:frontend-latest",
             "cpu": 0,
             "portMappings": [
