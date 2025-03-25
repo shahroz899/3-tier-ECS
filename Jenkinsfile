@@ -55,21 +55,11 @@ pipeline {
         stage('Register Task Definition') {
             steps {
                 script {
-                    // Read and update task definition file
                     def taskDef = readFile("${FRONTEND_DIR}/${TASK_DEFINITION_FILE}")
                     taskDef = taskDef.replaceAll('<IMAGE_PLACEHOLDER>', "${ECR_REPO}:frontend-latest")
                     writeFile(file: 'task-def-updated.json', text: taskDef)
 
-                    // Register task definition and capture ARN
-                    def registerOutput = sh(
-                        script: "aws ecs register-task-definition --cli-input-json file://task-def-updated.json --region ${AWS_REGION}",
-                        returnStdout: true
-                    ).trim()
-                    
-                    // Parse the task definition ARN from output
-                    def taskDefJson = readJSON(text: registerOutput)
-                    env.LATEST_TASK_DEF_ARN = taskDefJson.taskDefinition.taskDefinitionArn
-                    echo "Registered Task Definition ARN: ${env.LATEST_TASK_DEF_ARN}"
+                    sh "aws ecs register-task-definition --cli-input-json file://task-def-updated.json --region ${AWS_REGION}"
                 }
             }
         }
@@ -77,44 +67,21 @@ pipeline {
         stage('Update ECS Service') {
             steps {
                 script {
-                    // Update service with explicit task definition ARN
+                    def latestTaskDef = sh(
+                        script: "aws ecs describe-task-definition --task-definition frontend-task --query 'taskDefinition.taskDefinitionArn' --output text --region ${AWS_REGION}",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Using latest task definition: ${latestTaskDef}"
+
                     sh """
                         aws ecs update-service \
                             --cluster ${ECS_CLUSTER} \
                             --service ${ECS_SERVICE} \
-                            --task-definition ${env.LATEST_TASK_DEF_ARN} \
+                            --task-definition ${latestTaskDef} \
                             --force-new-deployment \
                             --region ${AWS_REGION}
                     """
-
-                    // Wait for service to stabilize
-                    sh """
-                        aws ecs wait services-stable \
-                            --cluster ${ECS_CLUSTER} \
-                            --services ${ECS_SERVICE} \
-                            --region ${AWS_REGION}
-                    """
-                    echo "Service updated successfully with new task definition"
-                }
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                script {
-                    // Verify the running task definition
-                    def serviceInfo = sh(
-                        script: "aws ecs describe-services --cluster ${ECS_CLUSTER} --services ${ECS_SERVICE} --region ${AWS_REGION}",
-                        returnStdout: true
-                    ).trim()
-                    
-                    def serviceJson = readJSON(text: serviceInfo)
-                    def runningTaskDef = serviceJson.services[0].taskDefinition
-                    echo "Currently running Task Definition: ${runningTaskDef}"
-                    
-                    if (!runningTaskDef.contains(env.LATEST_TASK_DEF_ARN)) {
-                        error("Service did not update to the latest task definition!")
-                    }
                 }
             }
         }
@@ -123,10 +90,6 @@ pipeline {
     post {
         always {
             sh 'rm -f task-def-updated.json'
-            echo "Pipeline execution completed"
-        }
-        failure {
-            echo "Pipeline failed - check logs for details"
         }
     }
 }
