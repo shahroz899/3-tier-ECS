@@ -29,7 +29,7 @@ pipeline {
             steps {
                 script {
                     env.REACT_APP_PUBLIC_URL = sh(
-                        script: "aws ssm get-parameter --name '/ecs/frontend/backendurl' --region ${AWS_REGION} --query Parameter.Value --output text",
+                        script: "aws ssm get-parameter --name '/ecs/frontend/backendurl' --region ${AWS_REGION} --query Parameter.Value --output text --with-decryption",
                         returnStdout: true
                     ).trim()
                     echo "Retrieved REACT_APP_PUBLIC_URL: ${env.REACT_APP_PUBLIC_URL}"
