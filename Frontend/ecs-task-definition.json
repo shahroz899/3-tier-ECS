@@ -1,7 +1,7 @@
 {
     "family": "frontend-task",
-    "taskRoleArn": "arn:aws:iam::654654539579:role/ecsTaskExecutionRole",
-    "executionRoleArn": "arn:aws:iam::654654539579:role/ECSExecRole",
+    "taskRoleArn": "arn:aws:iam::654654539579:role/ECSExecRole",
+    "executionRoleArn": "arn:aws:iam::654654539579:role/ecsTaskExecutionRole",
     "networkMode": "awsvpc",
     "requiresCompatibilities": ["FARGATE"],
     "cpu": "512",
